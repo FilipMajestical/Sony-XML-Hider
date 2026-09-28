@@ -1,0 +1,20 @@
+name: Build macOS app
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'mac-v*'
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build unsigned/ad-hoc macOS app
+        run: ./build.sh
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sony-XML-Hider-macOS
+          path: build/Sony_XML_Hider_macOS_v*.zip
