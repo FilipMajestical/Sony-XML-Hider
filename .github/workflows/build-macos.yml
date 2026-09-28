@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build unsigned/ad-hoc macOS app
-        run: ./build.sh
+        run: bash build.sh
       - name: Upload build
         uses: actions/upload-artifact@v4
         with:
