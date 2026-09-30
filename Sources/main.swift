@@ -11,7 +11,7 @@ private let installedAppURL = FileManager.default.homeDirectoryForCurrentUser
 
 final class SonyXMLWatcher: NSObject {
     private var timer: Timer?
-    private var knownClipFolders = Set<String>()
+    private var knownSonyVolumes = Set<String>()
     private var lastOpenedAt: [String: Date] = [:]
 
     override init() {
@@ -48,6 +48,24 @@ final class SonyXMLWatcher: NSObject {
         ) ?? []
     }
 
+    private func volumeIdentity(_ volume: URL) -> String {
+        if let values = try? volume.resourceValues(forKeys: [.volumeUUIDStringKey]),
+           let uuid = values.volumeUUIDString,
+           !uuid.isEmpty {
+            return uuid
+        }
+        return volume.path
+    }
+
+    private func openClipFolder(_ clip: URL) {
+        // LaunchAgents are background processes. Calling the system `open` tool
+        // is more reliable than NSWorkspace.open() for explicitly opening Finder.
+        let status = runProcess("/usr/bin/open", ["-a", "Finder", clip.path])
+        if status != 0 {
+            _ = NSWorkspace.shared.open(clip)
+        }
+    }
+
     private func scan(openNewFolders: Bool) {
         var current = Set<String>()
 
@@ -56,21 +74,24 @@ final class SonyXMLWatcher: NSObject {
             var isDir: ObjCBool = false
             guard FileManager.default.fileExists(atPath: clip.path, isDirectory: &isDir), isDir.boolValue else { continue }
 
-            current.insert(clip.path)
+            let identity = volumeIdentity(volume)
+            current.insert(identity)
             hideXMLFiles(in: clip)
 
-            if openNewFolders && !knownClipFolders.contains(clip.path) {
-                // Debounce repeated macOS mount notifications for the same volume.
+            if openNewFolders && !knownSonyVolumes.contains(identity) {
+                // Debounce duplicate mount notifications for the same card.
                 let now = Date()
-                if let last = lastOpenedAt[clip.path], now.timeIntervalSince(last) < 3.0 {
+                if let last = lastOpenedAt[identity], now.timeIntervalSince(last) < 3.0 {
                     continue
                 }
-                lastOpenedAt[clip.path] = now
-                NSWorkspace.shared.open(clip)
+                lastOpenedAt[identity] = now
+                openClipFolder(clip)
             }
         }
 
-        knownClipFolders = current
+        // If a card is removed, its identity disappears from this set.
+        // Re-inserting it later therefore triggers Finder again.
+        knownSonyVolumes = current
     }
 
     private func hideXMLFiles(in folder: URL) {
