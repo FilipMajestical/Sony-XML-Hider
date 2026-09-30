@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_NAME="Sony XML Hider"
-VERSION="1.0.0"
+VERSION="1.0.1"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BUILD="$ROOT/build"
 APP="$BUILD/$APP_NAME.app"
